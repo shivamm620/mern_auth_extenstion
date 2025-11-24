@@ -22,11 +22,10 @@ function LoginPage() {
         email,
         password,
       });
+      await chrome.storage.local.set({ accessToken: data.data.accessToken });
+      await chrome.storage.sync.set({ refreshToken: data.data.refreshToken });
       dispatch(setUser(data.data.user));
-      console.log(data.data.user);
       toast.success(data.message);
-      console.log(data);
-
       navigate("/user_profile");
       setEmail("");
       setPassword("");

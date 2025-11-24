@@ -78,35 +78,55 @@ export const singIn = asyncHandler(async (req, res) => {
   user.refreshToken.push(createRefreshToken);
   await user.save({ validateBeforeSave: false });
 
-  res.cookie("accesstoken", createAccessToken, {
-    httpOnly: true,
-    secure: true,
-    sameSite: "None",
-    path: "/",
-    maxAge: 15 * 60 * 1000,
-  });
-  res.cookie("refreshtoken", createRefreshToken, {
-    httpOnly: true,
-    sameSite: "None",
-    secure: true,
-    path: "/",
-    maxAge: 30 * 60 * 1000,
-  });
-  res.status(200).json(
-    new ApiResponse(
-      200,
-      {
-        user: {
-          id: user._id,
-          name: user.name,
-          email: user.email,
-          username: user.username,
-          role: user.role,
+  if (req.headers["x-platform"] === "web") {
+    res.cookie("accesstoken", createAccessToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "None",
+      path: "/",
+      maxAge: 15 * 60 * 1000,
+    });
+    res.cookie("refreshtoken", createRefreshToken, {
+      httpOnly: true,
+      sameSite: "None",
+      secure: true,
+      path: "/",
+      maxAge: 30 * 60 * 1000,
+    });
+    res.status(200).json(
+      new ApiResponse(
+        200,
+        {
+          user: {
+            id: user._id,
+            name: user.name,
+            email: user.email,
+            username: user.username,
+            role: user.role,
+          },
         },
-      },
-      "User Login Successfully"
-    )
-  );
+        "User Login Successfully"
+      )
+    );
+  } else {
+    res.status(200).json(
+      new ApiResponse(
+        200,
+        {
+          user: {
+            id: user._id,
+            name: user.name,
+            email: user.email,
+            username: user.username,
+            role: user.role,
+          },
+          accessToken: createAccessToken,
+          refreshToken: createRefreshToken,
+        },
+        "User Login Successfully"
+      )
+    );
+  }
 });
 export const profile = asyncHandler(async (req, res) => {
   const user = req.user;
@@ -123,41 +143,6 @@ export const verify_Email = asyncHandler(async (req, res) => {
   try {
     const decode = jwt.verify(token, process.env.EMAIL_VERIFY_SECRET);
     const user = await UserModel.findById(decode.id);
-
-    if (!user) {
-      throw new ApiError(404, "User not found");
-    }
-    if (user.isVerified) {
-      const accessToken = await user.genaccessToken();
-
-      res.cookie("accesstoken", accessToken, {
-        httpOnly: true,
-        secure: true,
-        path: "/",
-        sameSite: "None",
-      });
-
-      const safeUser = {
-        id: user._id,
-        username: user.username,
-        name: user.name,
-        email: user.email,
-        isVerified: user.isVerified,
-      };
-
-      return res.json(
-        new ApiResponse(200, { user: safeUser }, "User Verified Already")
-      );
-    }
-    user.isVerified = true;
-    await user.save({ validateBeforeSave: false });
-    const createAccessToken = await user.genaccessToken();
-    res.cookie("accesstoken", createAccessToken, {
-      httpOnly: true,
-      secure: true,
-      path: "/",
-      sameSite: "None",
-    });
     const safeUser = {
       id: user._id,
       username: user.username,
@@ -165,18 +150,65 @@ export const verify_Email = asyncHandler(async (req, res) => {
       email: user.email,
       isVerified: user.isVerified,
     };
+    if (!user) {
+      throw new ApiError(404, "User not found");
+    }
+    if (user.isVerified) {
+      const accessToken = await user.genaccessToken();
+      if (req.headers["x-platform"] === "web") {
+        res.cookie("accesstoken", accessToken, {
+          httpOnly: true,
+          secure: true,
+          path: "/",
+          sameSite: "None",
+        });
 
-    return res.json(
-      new ApiResponse(200, { user: safeUser }, "Email Verified Successfully")
-    );
+        return res.json(
+          new ApiResponse(200, { user: safeUser }, "User Verified Already")
+        );
+      } else {
+        return res.json(
+          new ApiResponse(
+            200,
+            { user: safeUser, accessToken: accessToken },
+            "User Verified Already"
+          )
+        );
+      }
+    }
+    user.isVerified = true;
+    await user.save({ validateBeforeSave: false });
+    const createAccessToken = await user.genaccessToken();
+    if (req.headers["x-platform"] === "web") {
+      res.cookie("accesstoken", createAccessToken, {
+        httpOnly: true,
+        secure: true,
+        path: "/",
+        sameSite: "None",
+      });
+
+      return res.json(
+        new ApiResponse(200, { user: safeUser }, "Email Verified Successfully")
+      );
+    } else {
+      return res.json(
+        new ApiResponse(
+          200,
+          { user: safeUser, accessToken: createAccessToken },
+          "Email Verified Successfully"
+        )
+      );
+    }
   } catch (error) {
     throw new ApiError(404, "Email Verification Error Please Try Again ");
   }
 });
 
 export const autoLogin = asyncHandler(async (req, res) => {
-  const accessToken = req.cookies?.accesstoken;
-  const refreshToken = req.cookies?.refreshtoken;
+  const accessToken =
+    req.cookies?.accesstoken ||
+    req.header("Authorization")?.replace(/^Bearer\s*/, "");
+  const refreshToken = req.cookies?.refreshtoken || req.body?.refreshToken;
 
   if (accessToken) {
     try {
@@ -233,37 +265,58 @@ export const autoLogin = asyncHandler(async (req, res) => {
 
       user.refreshToken.push(newRefreshToken);
       await user.save({ validateBeforeSave: false });
-      res.cookie("accesstoken", newAccessToken, {
-        httpOnly: true,
-        secure: true,
-        sameSite: "None",
-        path: "/",
-        maxAge: 15 * 60 * 1000,
-      });
-      res.cookie("refreshtoken", newRefreshToken, {
-        httpOnly: true,
-        secure: true,
-        sameSite: "None",
-        path: "/",
-        maxAge: 30 * 60 * 1000,
-      });
+      if (req.headers["x-platform"] === "web") {
+        res.cookie("accesstoken", newAccessToken, {
+          httpOnly: true,
+          secure: true,
+          sameSite: "None",
+          path: "/",
+          maxAge: 15 * 60 * 1000,
+        });
+        res.cookie("refreshtoken", newRefreshToken, {
+          httpOnly: true,
+          secure: true,
+          sameSite: "None",
+          path: "/",
+          maxAge: 30 * 60 * 1000,
+        });
 
-      return res.status(200).json(
-        new ApiResponse(
-          200,
-          {
-            user: {
-              id: user._id,
-              email: user.email,
-              username: user.username,
-              name: user.name,
-              role: user.role,
-              isVerified: user.isVerified,
+        return res.status(200).json(
+          new ApiResponse(
+            200,
+            {
+              user: {
+                id: user._id,
+                email: user.email,
+                username: user.username,
+                name: user.name,
+                role: user.role,
+                isVerified: user.isVerified,
+              },
             },
-          },
-          "Auto login successful"
-        )
-      );
+            "Auto login successful"
+          )
+        );
+      } else {
+        return res.status(200).json(
+          new ApiResponse(
+            200,
+            {
+              user: {
+                id: user._id,
+                email: user.email,
+                username: user.username,
+                name: user.name,
+                role: user.role,
+                isVerified: user.isVerified,
+              },
+              accessToken: newAccessToken,
+              refreshToken: newRefreshToken,
+            },
+            "Auto login successful"
+          )
+        );
+      }
     } catch (err) {
       return res.status(401).json(new ApiResponse(401, null, "Unauthorized"));
     }
@@ -319,7 +372,7 @@ export const resendEmail = asyncHandler(async (req, res) => {
   );
 });
 export const logout = asyncHandler(async (req, res) => {
-  const refreshToken = req.cookies?.refreshtoken;
+  const refreshToken = req.cookies?.refreshtoken || req.body?.refreshToken;
   const found_user = await UserModel.findById(req.user.id);
   if (!found_user) {
     throw new ApiError(404, "user not found");

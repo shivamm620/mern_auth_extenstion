@@ -25,8 +25,16 @@ function App() {
   const dispatch = useDispatch();
   useEffect(() => {
     const autoLogin = async () => {
+      const { accessToken, refreshToken } = await chrome.storage.local.get([
+        "accessToken",
+        "refreshToken",
+      ]);
       try {
-        const { data } = await Api.get("/auto");
+        const { data } = await Api.get("/auto", {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
 
         if (data?.data?.user) {
           console.log(data?.data?.user);

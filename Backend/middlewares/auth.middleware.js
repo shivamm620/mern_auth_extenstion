@@ -8,6 +8,8 @@ export const authMiddleware = asyncHandler(async (req, res, next) => {
     const token =
       req.cookies?.accesstoken ||
       req.header("Authorization")?.replace(/^Bearer\s*/, "");
+    console.log(token);
+
     if (!token) {
       throw new ApiError(401, "Token is required");
     }

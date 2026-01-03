@@ -2,6 +2,7 @@ import React from "react";
 import { useDispatch, useSelector } from "react-redux";
 import Button from "../components/Button";
 import { toast } from "react-toastify";
+import browser from "webextension-polyfill";
 import { setError, setLogout, setUser } from "../features/authSlice/authSlice";
 import Api from "../api/Api";
 import { useEffect } from "react";
@@ -9,7 +10,7 @@ function ProfilePage() {
   const { user } = useSelector((state) => state.authReducer);
   const dispatch = useDispatch();
   const handleLogout = async () => {
-    const { accessToken, refreshToken } = await chrome.storage.local.get([
+    const { accessToken, refreshToken } = await browser.storage.local.get([
       "accessToken",
       "refreshToken",
     ]);
@@ -23,7 +24,7 @@ function ProfilePage() {
           },
         }
       );
-      await chrome.storage.local.remove(["accessToken", "refreshToken"]);
+      await browser.storage.local.remove(["accessToken", "refreshToken"]);
       dispatch(setLogout());
       toast.success(data.message);
     } catch (error) {
@@ -32,7 +33,7 @@ function ProfilePage() {
     }
   };
   const handleAllLogout = async () => {
-    const { accessToken, refreshToken } = await chrome.storage.local.get([
+    const { accessToken, refreshToken } = await browser.storage.local.get([
       "accessToken",
       "refreshToken",
     ]);
@@ -47,7 +48,7 @@ function ProfilePage() {
           },
         }
       );
-      await chrome.storage.local.remove(["accessToken", "refreshToken"]);
+      await browser.storage.local.remove(["accessToken", "refreshToken"]);
       dispatch(setLogout());
       toast.success(data.message);
     } catch (error) {
@@ -57,7 +58,7 @@ function ProfilePage() {
   };
   useEffect(() => {
     const fetchData = async () => {
-      const { accessToken } = await chrome.storage.local.get("accessToken");
+      const { accessToken } = await browser.storage.local.get("accessToken");
       try {
         const { data } = await Api.get("/profile", {
           headers: {

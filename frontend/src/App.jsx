@@ -6,6 +6,7 @@ import SingupPage from "./pages/SingupPage";
 import HomePage from "./pages/HomePage";
 import ProtectedRoutes from "./pages/ProtectedRoutes";
 import ProfilePage from "./pages/ProfilePage";
+import browser from "webextension-polyfill";
 import { useEffect } from "react";
 import {
   setAuthChecked,
@@ -25,7 +26,7 @@ function App() {
   const dispatch = useDispatch();
   useEffect(() => {
     const autoLogin = async () => {
-      const { accessToken, refreshToken } = await chrome.storage.local.get([
+      const { accessToken, refreshToken } = await browser.storage.local.get([
         "accessToken",
         "refreshToken",
       ]);

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import Input from "../components/Input";
+import browser from "webextension-polyfill";
 import Button from "../components/Button";
 //import { useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -22,8 +23,9 @@ function LoginPage() {
         email,
         password,
       });
-      await chrome.storage.local.set({ accessToken: data.data.accessToken });
-      await chrome.storage.sync.set({ refreshToken: data.data.refreshToken });
+
+      await browser.storage.local.set({ accessToken: data.data.accessToken });
+      await browser.storage.local.set({ refreshToken: data.data.refreshToken });
       dispatch(setUser(data.data.user));
       toast.success(data.message);
       navigate("/user_profile");
